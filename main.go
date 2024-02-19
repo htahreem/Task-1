@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 )
@@ -22,6 +23,15 @@ var students = []Student{
 	{ID: "4", Name: "Gwen", RollNo: 4, ContactNo: 7654, Email: "gwen@gmail.com"},
 }
 
+func studentExists(id string) bool {
+	for _, val := range students {
+		if strings.EqualFold(val.ID, id) {
+			return true
+		}
+	}
+	return false
+}
+
 func getStudents(context *gin.Context) {
 	context.IndentedJSON(http.StatusOK, students)
 }
@@ -32,6 +42,12 @@ func addStudent(context *gin.Context) {
 		context.IndentedJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+
+	if studentExists(newStudent.ID) {
+		context.IndentedJSON(http.StatusConflict, gin.H{"error": "Student with the same ID already exists"})
+		return
+	}
+
 	students = append(students, newStudent)
 	context.IndentedJSON(http.StatusCreated, students)
 }
@@ -72,6 +88,11 @@ func updateStudent(context *gin.Context) {
 		return
 	}
 
+	if newStudent.ID != id && studentExists(newStudent.ID) {
+		context.IndentedJSON(http.StatusConflict, gin.H{"error": "Student with the updated ID already exists"})
+		return
+	}
+
 	currStudent.Name = newStudent.Name
 	currStudent.RollNo = newStudent.RollNo
 	currStudent.ContactNo = newStudent.ContactNo
@@ -97,7 +118,7 @@ func main() {
 	router.GET("/getStudents", getStudents)
 	router.GET("/getStudent/:id", getStudent)
 	router.POST("/addStudent", addStudent)
-	router.PATCH("/updateStudent/:id", updateStudent)
+	router.PUT("/updateStudent/:id", updateStudent)
 	router.DELETE("/deleteStudent/:id", deleteStudent)
 
 	router.Run("localhost:9090")
